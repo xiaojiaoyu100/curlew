@@ -1,3 +1,3 @@
 package curlew
 
-type Monitor func(j *Job, err error)
+type Monitor func(err error)

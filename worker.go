@@ -2,6 +2,7 @@ package curlew
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -23,7 +24,7 @@ func NewWorker(d *Dispatcher) *Worker {
 	w.close = make(chan struct{})
 	w.schedule()
 	w.d = d
-	d.Add(w)
+	d.add(w)
 	d.WorkerPool <- w
 	return w
 }
@@ -50,13 +51,10 @@ func (w *Worker) schedule() {
 	go func() {
 		ticker := time.NewTicker(w.workerIdleTimeout)
 		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				if w.canClose() {
-					close(w.close)
-					return
-				}
+		for range ticker.C {
+			if w.canClose() {
+				close(w.close)
+				return
 			}
 		}
 	}()
@@ -64,31 +62,24 @@ func (w *Worker) schedule() {
 		var jr *Job
 		defer func() {
 			if r := recover(); r != nil {
-				err, ok := r.(error)
-				if ok && w.d.monitor != nil {
-					w.d.monitor(jr, err)
-				}
+				w.d.monitor(fmt.Errorf("job crash: job = %#v, err = %#v", jr, r))
 			}
 		}()
 		for {
 			select {
 			case <-w.close:
-				{
-					w.d.Remove(w)
-					return
-				}
+				w.d.remove(w)
+				return
 			case j := <-w.Jobs:
 				{
 					jr = j
 					w.SetRunning(true)
 					ctx, cancel := context.WithTimeout(context.TODO(), w.d.MaxJobRunningTimeout)
 					if err := j.Fn(ctx, j.Arg); err != nil {
-						if w.d.monitor != nil {
-							w.d.monitor(j, err)
-						}
+						w.d.monitor(fmt.Errorf("job = %#v, err = %#v", j, err))
 					}
-					w.SetLastBusyTime()
 					cancel()
+					w.SetLastBusyTime()
 					w.SetRunning(false)
 					w.d.WorkerPool <- w
 				}

@@ -6,19 +6,21 @@ import (
 	"time"
 )
 
+// Dispatcher takes the responsibility of dispatching jobs to available workers.
 type Dispatcher struct {
 	guard                sync.RWMutex
-	MaxWorkerNum         int
-	JobSize              int
-	WorkerIdleTimeout    time.Duration
-	MaxJobRunningTimeout time.Duration
-	WorkerPool           chan *Worker
+	MaxWorkerNum         int           // maximum  worker num in the pool
+	JobSize              int           // job buffer size
+	WorkerIdleTimeout    time.Duration // worker
+	MaxJobRunningTimeout time.Duration // job execution timeout
+	WorkerPool           chan *Worker  // worker pool
 	workers              map[*Worker]struct{}
 	jobs                 chan *Job
 	runningWorkerNum     int
 	monitor              Monitor
 }
 
+// New creates a dispatcher instance.
 func New(setters ...Setter) (*Dispatcher, error) {
 	d := Dispatcher{
 		MaxWorkerNum:         16,
@@ -41,6 +43,10 @@ func New(setters ...Setter) (*Dispatcher, error) {
 		return nil, errors.New("must have at least one job buffered in the channel")
 	}
 
+	if d.monitor == nil {
+		return nil, errors.New("no monitor provided")
+	}
+
 	d.WorkerPool = make(chan *Worker, d.MaxWorkerNum)
 	d.workers = make(map[*Worker]struct{})
 	d.jobs = make(chan *Job, d.JobSize)
@@ -49,6 +55,7 @@ func New(setters ...Setter) (*Dispatcher, error) {
 	return &d, nil
 }
 
+// SubmitAsync submits a job asynchronously.
 func (d *Dispatcher) SubmitAsync(j *Job) {
 	go func() {
 		if j == nil {
@@ -58,20 +65,21 @@ func (d *Dispatcher) SubmitAsync(j *Job) {
 	}()
 }
 
+// RunningWorkerNum returns the current running worker num.
 func (d *Dispatcher) RunningWorkerNum() int {
 	d.guard.RLock()
 	defer d.guard.RUnlock()
 	return d.runningWorkerNum
 }
 
-func (d *Dispatcher) Add(w *Worker) {
+func (d *Dispatcher) add(w *Worker) {
 	d.guard.Lock()
 	d.workers[w] = struct{}{}
 	d.runningWorkerNum++
 	d.guard.Unlock()
 }
 
-func (d *Dispatcher) Remove(w *Worker) {
+func (d *Dispatcher) remove(w *Worker) {
 	d.guard.Lock()
 	delete(d.workers, w)
 	d.runningWorkerNum--
@@ -80,18 +88,15 @@ func (d *Dispatcher) Remove(w *Worker) {
 
 func (d *Dispatcher) dispatch() {
 	go func() {
-		for {
+		for j := range d.jobs {
 			select {
-			case j := <-d.jobs:
-				select {
-				case w := <-d.WorkerPool:
-					w.submitAsync(j)
-				default:
-					if d.RunningWorkerNum() < d.MaxWorkerNum {
-						NewWorker(d)
-					}
-					d.SubmitAsync(j)
+			case w := <-d.WorkerPool:
+				w.submitAsync(j)
+			default:
+				if d.RunningWorkerNum() < d.MaxWorkerNum {
+					NewWorker(d)
 				}
+				d.SubmitAsync(j)
 			}
 		}
 	}()

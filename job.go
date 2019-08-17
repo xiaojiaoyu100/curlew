@@ -4,13 +4,16 @@ import (
 	"context"
 )
 
-type Handle func(ctx context.Context, arg interface{}) error
+// Handler provides the job function signature.
+type Handler func(ctx context.Context, arg interface{}) error
 
+// Job defines a job.
 type Job struct {
-	Fn  Handle
+	Fn  Handler
 	Arg interface{}
 }
 
+// NewJob creates a job instance.
 func NewJob() *Job {
 	job := new(Job)
 	return job
