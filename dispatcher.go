@@ -50,6 +50,11 @@ func New(setters ...Setter) (*Dispatcher, error) {
 	d.WorkerPool = make(chan *Worker, d.MaxWorkerNum)
 	d.workers = make(map[*Worker]struct{})
 	d.jobs = make(chan *Job, d.JobSize)
+
+	for i := 1; i <= d.MaxWorkerNum; i++ {
+		NewWorker(&d)
+	}
+
 	d.dispatch()
 
 	return &d, nil
