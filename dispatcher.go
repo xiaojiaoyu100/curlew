@@ -60,16 +60,6 @@ func New(setters ...Setter) (*Dispatcher, error) {
 	return &d, nil
 }
 
-// SubmitAsync submits a job asynchronously.
-func (d *Dispatcher) SubmitAsync(j *Job) {
-	go func() {
-		if j == nil {
-			return
-		}
-		d.jobs <- j
-	}()
-}
-
 // Submit submits a job.
 func (d *Dispatcher) Submit(j *Job) {
 	if j == nil {
@@ -104,12 +94,12 @@ func (d *Dispatcher) dispatch() {
 		for j := range d.jobs {
 			select {
 			case w := <-d.WorkerPool:
-				w.submitAsync(j)
+				w.submit(j)
 			default:
 				if d.RunningWorkerNum() < d.MaxWorkerNum {
 					NewWorker(d)
 				}
-				d.SubmitAsync(j)
+				d.Submit(j)
 			}
 		}
 	}()

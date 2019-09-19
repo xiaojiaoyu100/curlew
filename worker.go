@@ -41,10 +41,8 @@ func (w *Worker) SetLastBusyTime() {
 	w.lastBusyTime = time.Now().UTC()
 }
 
-func (w *Worker) submitAsync(job *Job) {
-	go func() {
-		w.Jobs <- job
-	}()
+func (w *Worker) submit(job *Job) {
+	w.Jobs <- job
 }
 
 func (w *Worker) schedule() {
