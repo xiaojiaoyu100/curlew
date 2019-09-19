@@ -70,6 +70,14 @@ func (d *Dispatcher) SubmitAsync(j *Job) {
 	}()
 }
 
+// Submit submits a job.
+func (d *Dispatcher) Submit(j *Job) {
+	if j == nil {
+		return
+	}
+	d.jobs <- j
+}
+
 // RunningWorkerNum returns the current running worker num.
 func (d *Dispatcher) RunningWorkerNum() int {
 	d.guard.RLock()
