@@ -27,7 +27,6 @@ func NewWorker(d *Dispatcher) *Worker {
 	w.schedule()
 	w.d = d
 	d.add(w)
-	d.WorkerPool <- w
 	return w
 }
 
@@ -46,7 +45,6 @@ func (w *Worker) SetLastBusyTime() {
 func (w *Worker) close() {
 	w.guard.Lock()
 	defer w.guard.Unlock()
-
 	close(w.closeChan)
 	w.isClosed = true
 }
@@ -58,7 +56,6 @@ func (w *Worker) IsClosed() bool {
 }
 
 func (w *Worker) submit(job *Job) {
-	w.SetLastBusyTime()
 	w.Jobs <- job
 }
 
@@ -94,6 +91,7 @@ func (w *Worker) schedule() {
 						w.d.monitor(fmt.Errorf("job = %#v, err = %#v", j, err))
 					}
 					cancel()
+					w.SetLastBusyTime()
 					w.SetRunning(false)
 					w.d.WorkerPool <- w
 				}
