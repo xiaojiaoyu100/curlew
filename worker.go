@@ -58,6 +58,7 @@ func (w *Worker) IsClosed() bool {
 }
 
 func (w *Worker) submit(job *Job) {
+	w.SetLastBusyTime()
 	w.Jobs <- job
 }
 
@@ -93,7 +94,6 @@ func (w *Worker) schedule() {
 						w.d.monitor(fmt.Errorf("job = %#v, err = %#v", j, err))
 					}
 					cancel()
-					w.SetLastBusyTime()
 					w.SetRunning(false)
 					w.d.WorkerPool <- w
 				}
