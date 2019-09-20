@@ -19,7 +19,7 @@ type Worker struct {
 
 func NewWorker(d *Dispatcher) *Worker {
 	w := new(Worker)
-	w.Jobs = make(chan *Job)
+	w.Jobs = make(chan *Job, 1)
 	w.workerIdleTimeout = d.WorkerIdleTimeout
 	w.close = make(chan struct{})
 	w.schedule()
@@ -41,10 +41,8 @@ func (w *Worker) SetLastBusyTime() {
 	w.lastBusyTime = time.Now().UTC()
 }
 
-func (w *Worker) submitAsync(job *Job) {
-	go func() {
-		w.Jobs <- job
-	}()
+func (w *Worker) submit(job *Job) {
+	w.Jobs <- job
 }
 
 func (w *Worker) schedule() {
