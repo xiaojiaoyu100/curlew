@@ -49,8 +49,7 @@ linters:
 
 run:
   skip-dirs:
-    - test/testdata_etc
-    - pkg/golinters/goanalysis/(checker|passes)
+
 
 issues:
   exclude-rules:
