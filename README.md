@@ -34,9 +34,9 @@ func main() {
 	j.Arg = 3
 	j.Fn = func(ctx context.Context, arg interface{}) error {
 		fmt.Println("I'm done")
-		return errors.New("ssss")
+		return nil
 	}
-	d.SubmitAsync(j)
+	d.Submit(j)
 	select {}
 }
 ```

@@ -14,14 +14,16 @@ type Worker struct {
 	lastBusyTime      time.Time
 	workerIdleTimeout time.Duration
 	running           bool
-	close             chan struct{}
+	closeChan         chan struct{}
+	isClosed          bool
 }
 
 func NewWorker(d *Dispatcher) *Worker {
 	w := new(Worker)
 	w.Jobs = make(chan *Job, 1)
 	w.workerIdleTimeout = d.WorkerIdleTimeout
-	w.close = make(chan struct{})
+	w.closeChan = make(chan struct{})
+	w.isClosed = false
 	w.schedule()
 	w.d = d
 	d.add(w)
@@ -41,6 +43,20 @@ func (w *Worker) SetLastBusyTime() {
 	w.lastBusyTime = time.Now().UTC()
 }
 
+func (w *Worker) close() {
+	w.guard.Lock()
+	defer w.guard.Unlock()
+
+	close(w.closeChan)
+	w.isClosed = true
+}
+
+func (w *Worker) IsClosed() bool {
+	w.guard.Lock()
+	defer w.guard.Unlock()
+	return w.isClosed
+}
+
 func (w *Worker) submit(job *Job) {
 	w.Jobs <- job
 }
@@ -51,7 +67,8 @@ func (w *Worker) schedule() {
 		defer ticker.Stop()
 		for range ticker.C {
 			if w.canClose() {
-				close(w.close)
+				w.close()
+				w.d.remove(w)
 				return
 			}
 		}
@@ -65,8 +82,7 @@ func (w *Worker) schedule() {
 		}()
 		for {
 			select {
-			case <-w.close:
-				w.d.remove(w)
+			case <-w.closeChan:
 				return
 			case j := <-w.Jobs:
 				{

@@ -94,7 +94,11 @@ func (d *Dispatcher) dispatch() {
 		for j := range d.jobs {
 			select {
 			case w := <-d.WorkerPool:
-				w.submit(j)
+				if w.IsClosed() {
+					NewWorker(d).submit(j)
+				} else {
+					w.submit(j)
+				}
 			default:
 				if d.RunningWorkerNum() < d.MaxWorkerNum {
 					NewWorker(d).submit(j)
