@@ -2,8 +2,11 @@ package curlew
 
 import (
 	"errors"
+	"os"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Dispatcher takes the responsibility of dispatching jobs to available workers.
@@ -18,6 +21,7 @@ type Dispatcher struct {
 	jobs                 chan *Job
 	runningWorkerNum     int
 	monitor              Monitor
+	logger               *logrus.Logger
 }
 
 // New creates a dispatcher instance.
@@ -53,7 +57,20 @@ func New(setters ...Setter) (*Dispatcher, error) {
 
 	d.dispatch()
 
+	logger := logrus.New()
+	logger.SetFormatter(&logrus.JSONFormatter{
+		TimestampFormat: "2006-01-02 15:04:05",
+	})
+	logger.SetOutput(os.Stdout)
+	logger.SetLevel(logrus.InfoLevel)
+	d.logger = logger
+
 	return &d, nil
+}
+
+// EnableDebug enables debug info.
+func (d *Dispatcher) EnableDebug() {
+	d.logger.SetLevel(logrus.DebugLevel)
 }
 
 // Submit submits a job.
@@ -91,14 +108,17 @@ func (d *Dispatcher) dispatch() {
 			select {
 			case w := <-d.WorkerPool:
 				if w.IsClosed() {
+					d.logger.Debug("worker is closed")
 					NewWorker(d).submit(j)
 				} else {
 					w.submit(j)
 				}
 			default:
 				if d.RunningWorkerNum() < d.MaxWorkerNum {
+					d.logger.Debug("not reach limit yet, create new worker")
 					NewWorker(d).submit(j)
 				} else {
+					d.logger.Debug("reach limit, wait a ready worker")
 					w := <-d.WorkerPool
 					w.submit(j)
 				}

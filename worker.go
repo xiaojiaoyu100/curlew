@@ -115,6 +115,7 @@ func (w *Worker) Running() bool {
 func (w *Worker) canClose() bool {
 	w.guard.RLock()
 	defer w.guard.RUnlock()
+	w.d.logger.Debugf("worker running status: %v, deadline: %v, now: %v", w.running, w.lastBusyTime.Add(w.workerIdleTimeout), time.Now().UTC())
 	if !w.running && w.lastBusyTime.Add(w.workerIdleTimeout).Before(time.Now().UTC()) {
 		return true
 	}

@@ -21,7 +21,7 @@ func WithJobSize(size int) Setter {
 	}
 }
 
-// WithWorkerIdleTimeout configures wrker idle timeout.
+// WithWorkerIdleTimeout configures worker idle timeout.
 func WithWorkerIdleTimeout(t time.Duration) Setter {
 	return func(d *Dispatcher) error {
 		d.WorkerIdleTimeout = t
