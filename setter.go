@@ -13,14 +13,6 @@ func WithMaxWorkerNum(num int) Setter {
 	}
 }
 
-// WithJobSize configures job buffer size.
-func WithJobSize(size int) Setter {
-	return func(d *Dispatcher) error {
-		d.JobSize = size
-		return nil
-	}
-}
-
 // WithWorkerIdleTimeout configures worker idle timeout.
 func WithWorkerIdleTimeout(t time.Duration) Setter {
 	return func(d *Dispatcher) error {

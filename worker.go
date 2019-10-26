@@ -56,6 +56,7 @@ func (w *Worker) IsClosed() bool {
 }
 
 func (w *Worker) submit(job *Job) {
+	w.SetRunning(true)
 	w.Jobs <- job
 }
 
@@ -85,7 +86,6 @@ func (w *Worker) schedule() {
 			case j := <-w.Jobs:
 				{
 					jr = j
-					w.SetRunning(true)
 					ctx, cancel := context.WithTimeout(context.TODO(), w.d.MaxJobRunningTimeout)
 					if err := j.Fn(ctx, j.Arg); err != nil {
 						w.d.monitor(fmt.Errorf("job = %#v, err = %#v", j, err))

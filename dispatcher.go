@@ -28,7 +28,6 @@ type Dispatcher struct {
 func New(setters ...Setter) (*Dispatcher, error) {
 	d := Dispatcher{
 		MaxWorkerNum:         16,
-		JobSize:              16,
 		WorkerIdleTimeout:    time.Second * 60,
 		MaxJobRunningTimeout: 10 * time.Second,
 	}
@@ -43,17 +42,13 @@ func New(setters ...Setter) (*Dispatcher, error) {
 		return nil, errors.New("must have at least one worker in the pool")
 	}
 
-	if d.JobSize < 1 {
-		return nil, errors.New("must have at least one job buffered in the channel")
-	}
-
 	if d.monitor == nil {
 		return nil, errors.New("no monitor provided")
 	}
 
 	d.WorkerPool = make(chan *Worker, d.MaxWorkerNum)
 	d.workers = make(map[*Worker]struct{})
-	d.jobs = make(chan *Job, d.JobSize)
+	d.jobs = make(chan *Job, 1)
 
 	d.dispatch()
 
@@ -108,19 +103,25 @@ func (d *Dispatcher) dispatch() {
 			select {
 			case w := <-d.WorkerPool:
 				if w.IsClosed() {
-					d.logger.Debug("worker is closed")
+					d.logger.Debug("Worker is closed and creating an new worker to submit a task.")
 					NewWorker(d).submit(j)
 				} else {
+					d.logger.Debug("Worker is ready to submit a task.")
 					w.submit(j)
 				}
 			default:
 				if d.RunningWorkerNum() < d.MaxWorkerNum {
-					d.logger.Debug("not reach limit yet, create new worker")
+					d.logger.Debug("not reach limit yet, create a new worker to submit a task.")
 					NewWorker(d).submit(j)
 				} else {
-					d.logger.Debug("reach limit, wait a ready worker")
 					w := <-d.WorkerPool
-					w.submit(j)
+					if w.IsClosed() {
+						d.logger.Debug("reach limit, wait a closed worker")
+						NewWorker(d).submit(j)
+					} else {
+						d.logger.Debug("reach limit, wait a ready worker")
+						w.submit(j)
+					}
 				}
 			}
 		}
