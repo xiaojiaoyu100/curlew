@@ -1,7 +1,5 @@
 package curlew
 
-import "time"
-
 // Setter configures a Dispatcher.
 type Setter func(d *Dispatcher) error
 
@@ -9,14 +7,6 @@ type Setter func(d *Dispatcher) error
 func WithMaxWorkerNum(num int) Setter {
 	return func(d *Dispatcher) error {
 		d.MaxWorkerNum = num
-		return nil
-	}
-}
-
-// WithWorkerIdleTimeout configures worker idle timeout.
-func WithWorkerIdleTimeout(t time.Duration) Setter {
-	return func(d *Dispatcher) error {
-		d.WorkerIdleTimeout = t
 		return nil
 	}
 }

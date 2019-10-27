@@ -13,8 +13,6 @@ import (
 type Dispatcher struct {
 	guard                sync.RWMutex
 	MaxWorkerNum         int           // maximum  worker num in the pool
-	JobSize              int           // job buffer size
-	WorkerIdleTimeout    time.Duration // worker
 	MaxJobRunningTimeout time.Duration // job execution timeout
 	WorkerPool           chan *Worker  // worker pool
 	workers              map[*Worker]struct{}
@@ -28,7 +26,6 @@ type Dispatcher struct {
 func New(setters ...Setter) (*Dispatcher, error) {
 	d := Dispatcher{
 		MaxWorkerNum:         16,
-		WorkerIdleTimeout:    time.Second * 60,
 		MaxJobRunningTimeout: 10 * time.Second,
 	}
 
@@ -50,8 +47,6 @@ func New(setters ...Setter) (*Dispatcher, error) {
 	d.workers = make(map[*Worker]struct{})
 	d.jobs = make(chan *Job, 1)
 
-	d.dispatch()
-
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
@@ -59,6 +54,8 @@ func New(setters ...Setter) (*Dispatcher, error) {
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(logrus.InfoLevel)
 	d.logger = logger
+
+	d.dispatch()
 
 	return &d, nil
 }
@@ -97,31 +94,27 @@ func (d *Dispatcher) remove(w *Worker) {
 	d.guard.Unlock()
 }
 
+func (d *Dispatcher) NewWorker() *Worker {
+	w := newWorker(d)
+	d.add(w)
+	return w
+}
+
 func (d *Dispatcher) dispatch() {
 	go func() {
 		for j := range d.jobs {
 			select {
 			case w := <-d.WorkerPool:
-				if w.IsClosed() {
-					d.logger.Debug("Worker is closed and creating an new worker to submit a task.")
-					NewWorker(d).submit(j)
-				} else {
-					d.logger.Debug("Worker is ready to submit a task.")
-					w.submit(j)
-				}
+				d.logger.Debug("Worker is ready to submit a task.")
+				w.submit(j)
 			default:
 				if d.RunningWorkerNum() < d.MaxWorkerNum {
-					d.logger.Debug("not reach limit yet, create a new worker to submit a task.")
-					NewWorker(d).submit(j)
+					d.logger.Debug("Not reach limit yet, create a new worker to submit a task.")
+					d.NewWorker().submit(j)
 				} else {
 					w := <-d.WorkerPool
-					if w.IsClosed() {
-						d.logger.Debug("reach limit, wait a closed worker")
-						NewWorker(d).submit(j)
-					} else {
-						d.logger.Debug("reach limit, wait a ready worker")
-						w.submit(j)
-					}
+					d.logger.Debug("Reach limit, wait a ready worker")
+					w.submit(j)
 				}
 			}
 		}
