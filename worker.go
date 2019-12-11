@@ -3,6 +3,7 @@ package curlew
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"sync"
 )
 
@@ -40,7 +41,7 @@ func (w *Worker) schedule() {
 							w.d.WorkerPool <- w
 							done <- struct{}{}
 							if r := recover(); r != nil {
-								w.d.monitor(fmt.Errorf("job crash: job = %#v, err = %#v", 1, r))
+								w.d.monitor(fmt.Errorf("job crash: job = %#v, err = %#v, debug = %s", 1, r, string(debug.Stack())))
 							}
 						}()
 						ctx, cancel := context.WithTimeout(context.TODO(), w.d.MaxJobRunningTimeout)
