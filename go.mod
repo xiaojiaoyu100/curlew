@@ -1,6 +1,6 @@
 module github.com/xiaojiaoyu100/curlew
 
-go 1.12
+go 1.14
 
 require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect

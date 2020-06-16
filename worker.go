@@ -34,22 +34,12 @@ func (w *Worker) schedule() {
 			select {
 			case j := <-w.Jobs:
 				{
-					done := make(chan struct{})
-					go func() {
-						defer func() {
-							w.d.WorkerPool <- w
-							done <- struct{}{}
-							if r := recover(); r != nil {
-								w.d.monitor(fmt.Errorf("job crash: job = %#v, err = %#v", 1, r))
-							}
-						}()
-						ctx, cancel := context.WithTimeout(context.TODO(), w.d.MaxJobRunningTimeout)
-						defer cancel()
-						if err := j.Fn(ctx, j.Arg); err != nil {
-							w.d.monitor(fmt.Errorf("job = %#v, err = %#v", j, err))
-						}
-					}()
-					<-done
+					ctx, cancel := context.WithTimeout(context.TODO(), w.d.MaxJobRunningTimeout)
+					if err := j.Fn(ctx, j.Arg); err != nil {
+						w.d.monitor(fmt.Errorf("job = %#v, err = %#v", j, err))
+					}
+					cancel()
+					w.d.WorkerPool <- w
 				}
 			}
 		}
