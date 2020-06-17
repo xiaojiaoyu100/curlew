@@ -6,6 +6,7 @@ import (
 	"sync"
 )
 
+// Worker 工作协程
 type Worker struct {
 	guard sync.RWMutex
 	d     *Dispatcher
@@ -28,20 +29,28 @@ func (w *Worker) submit(j *Job) {
 }
 
 func (w *Worker) schedule() {
-
 	go func() {
 		for {
 			select {
 			case j := <-w.Jobs:
 				{
-					ctx, cancel := context.WithTimeout(context.TODO(), w.d.MaxJobRunningTimeout)
-					if err := j.Fn(ctx, j.Arg); err != nil {
-						w.d.monitor(fmt.Errorf("job = %#v, err = %#v", j, err))
-					}
-					cancel()
-					w.d.WorkerPool <- w
+					w.exec(j)
 				}
 			}
 		}
 	}()
+}
+
+func (w *Worker) exec(j *Job) {
+	ctx, cancel := context.WithTimeout(context.TODO(), w.d.MaxJobRunningTimeout)
+	defer func() {
+		if r := recover(); r != nil {
+			w.d.monitor(fmt.Errorf("fn panic: job = %#v, recover() = %#v", j, r))
+		}
+		cancel()
+	}()
+	if err := j.Fn(ctx, j.Arg); err != nil {
+		w.d.monitor(fmt.Errorf("job = %#v, err = %#v", j, err))
+	}
+	w.d.WorkerPool <- w
 }

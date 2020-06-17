@@ -94,6 +94,7 @@ func (d *Dispatcher) remove(w *Worker) {
 	d.guard.Unlock()
 }
 
+// NewWorker 生成一个工作协程
 func (d *Dispatcher) NewWorker() *Worker {
 	w := newWorker(d)
 	d.add(w)
