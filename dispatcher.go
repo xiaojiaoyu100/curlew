@@ -3,6 +3,7 @@ package curlew
 import (
 	"errors"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
@@ -22,10 +23,18 @@ type Dispatcher struct {
 	logger               *logrus.Logger
 }
 
+func defaultWorkerNum() int {
+	num := runtime.NumCPU()
+	if num <= 0 {
+		return 2
+	}
+	return 2 * num
+}
+
 // New creates a dispatcher instance.
 func New(setters ...Setter) (*Dispatcher, error) {
 	d := Dispatcher{
-		MaxWorkerNum:         16,
+		MaxWorkerNum:         defaultWorkerNum(),
 		MaxJobRunningTimeout: 10 * time.Second,
 	}
 

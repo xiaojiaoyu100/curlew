@@ -48,9 +48,9 @@ func (w *Worker) exec(j *Job) {
 			w.d.monitor(fmt.Errorf("fn panic: job = %#v, recover() = %#v", j, r))
 		}
 		cancel()
+		w.d.WorkerPool <- w
 	}()
 	if err := j.Fn(ctx, j.Arg); err != nil {
 		w.d.monitor(fmt.Errorf("job = %#v, err = %#v", j, err))
 	}
-	w.d.WorkerPool <- w
 }
