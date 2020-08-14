@@ -2,6 +2,8 @@
 
 Curlew is a job pool based on a local machine.
 
+[![GoDoc](https://godoc.org/github.com/xiaojiaoyu100/curlew?status.svg)](https://godoc.org/github.com/xiaojiaoyu100/curlew)
+
 ## Feature
 
 * Automatically scale the number of workers up or down.
